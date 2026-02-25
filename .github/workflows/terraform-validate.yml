@@ -9,7 +9,6 @@ name: Terraform Validate & Plan
 on:
   pull_request:
     branches:
-      - dev
       - qa
       - prod
     paths:
