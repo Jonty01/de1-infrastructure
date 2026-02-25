@@ -38,6 +38,7 @@ provider "aws" {
   region = "us-east-1" # ← update if using a different region
 }
 
+# username added
 locals {
   project_name = "de1"
   github_org   = "Jonty01" # ← replace with your GitHub username or org
