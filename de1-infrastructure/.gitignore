@@ -1,0 +1,19 @@
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+tfplan
+*.tfplan
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Sensitive vars (never commit)
+*.auto.tfvars
+secrets.tfvars
+
+# OS
+.DS_Store
+Thumbs.db

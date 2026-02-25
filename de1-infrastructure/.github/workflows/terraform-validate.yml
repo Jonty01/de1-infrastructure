@@ -1,0 +1,87 @@
+##############################################################################
+# .github/workflows/terraform-validate.yml  (de1-infrastructure)
+# Triggers: PRs to dev, qa, prod
+# Does:     validate + plan, posts result as PR comment
+##############################################################################
+
+name: Terraform Validate & Plan
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - qa
+      - prod
+    paths:
+      - "terraform/**"
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  validate-and-plan:
+    name: Plan (${{ github.base_ref }})
+    runs-on: ubuntu-latest
+
+    env:
+      TF_WORKING_DIR: terraform
+      ENVIRONMENT: ${{ github.base_ref }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.6.0"
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform init \
+            -backend-config="environments/${{ env.ENVIRONMENT }}/backend.hcl" \
+            -reconfigure
+
+      - name: Terraform Validate
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform validate
+
+      - name: Terraform Format Check
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Plan
+        id: plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform plan \
+            -var-file="environments/${{ env.ENVIRONMENT }}/terraform.tfvars" \
+            -no-color 2>&1 | tee plan_output.txt
+        continue-on-error: true
+
+      - name: Post Plan to PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('${{ env.TF_WORKING_DIR }}/plan_output.txt', 'utf8');
+            const truncated = plan.length > 65000 ? plan.substring(0, 65000) + '\n...[truncated]' : plan;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## Terraform Plan — \`${{ env.ENVIRONMENT }}\`\n\n<details><summary>Show Plan</summary>\n\n\`\`\`hcl\n${truncated}\n\`\`\`\n</details>\n\n**Status:** ${{ steps.plan.outcome }}`
+            });
+
+      - name: Fail if plan failed
+        if: steps.plan.outcome == 'failure'
+        run: exit 1

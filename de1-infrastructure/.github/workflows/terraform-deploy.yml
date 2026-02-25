@@ -1,0 +1,126 @@
+##############################################################################
+# .github/workflows/terraform-deploy.yml  (de1-infrastructure)
+# Triggers: push to prod (i.e. after PR is merged into prod)
+# Does:     plan → manual approval gate → terraform apply
+##############################################################################
+
+name: Terraform Deploy — Production
+
+on:
+  push:
+    branches:
+      - prod
+    paths:
+      - "terraform/**"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    environment: production   # ← triggers manual approval gate
+
+    env:
+      TF_WORKING_DIR: terraform
+
+    outputs:
+      plan_exitcode: ${{ steps.plan.outputs.exitcode }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.6.0"
+          terraform_wrapper: false
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform init \
+            -backend-config="environments/prod/backend.hcl" \
+            -reconfigure
+
+      - name: Terraform Validate
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform validate
+
+      - name: Terraform Plan
+        id: plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          set +e
+          terraform plan \
+            -var-file="environments/prod/terraform.tfvars" \
+            -out=tfplan \
+            -detailed-exitcode \
+            -no-color
+          echo "exitcode=$?" >> $GITHUB_OUTPUT
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-prod
+          path: ${{ env.TF_WORKING_DIR }}/tfplan
+          retention-days: 1
+
+  apply:
+    name: Terraform Apply — PRODUCTION
+    runs-on: ubuntu-latest
+    needs: plan
+    if: needs.plan.outputs.plan_exitcode == '2'
+    environment: production   # ← second approval gate on apply
+
+    env:
+      TF_WORKING_DIR: terraform
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.6.0"
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform init \
+            -backend-config="environments/prod/backend.hcl" \
+            -reconfigure
+
+      - name: Download plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-prod
+          path: ${{ env.TF_WORKING_DIR }}
+
+      - name: Terraform Apply
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform apply -auto-approve tfplan
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## ✅ Terraform Apply Complete" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** production" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
