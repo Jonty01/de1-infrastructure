@@ -10,7 +10,7 @@ terraform {
 
   backend "s3" {
     # Populated after bootstrap — replace these values with bootstrap outputs
-    bucket         = "de1-terraform-state-8c0a954b"  # ← from bootstrap output
+    bucket         = "de1-terraform-state-8c0a954b" # ← from bootstrap output
     dynamodb_table = "de1-terraform-state-lock"
     region         = "us-east-1"
     encrypt        = true
@@ -61,10 +61,10 @@ module "glue" {
 # ── Lambda Functions ─────────────────────────────────────────────────────────
 
 module "lambda" {
-  source                  = "./modules/lambda"
-  project_name            = var.project_name
-  environment             = var.environment
-  lambda_packages_bucket  = module.s3.lambda_packages_bucket_name
-  subnet_ids              = module.networking.private_subnet_ids
-  security_group_id       = module.networking.lambda_security_group_id
+  source                 = "./modules/lambda"
+  project_name           = var.project_name
+  environment            = var.environment
+  lambda_packages_bucket = module.s3.lambda_packages_bucket_name
+  subnet_ids             = module.networking.private_subnet_ids
+  security_group_id      = module.networking.lambda_security_group_id
 }
