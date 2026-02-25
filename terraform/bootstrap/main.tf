@@ -38,9 +38,10 @@ provider "aws" {
   region = "us-east-1" # ← update if using a different region
 }
 
+# username added
 locals {
   project_name = "de1"
-  github_org   = "YOUR_GITHUB_USERNAME" # ← replace with your GitHub username or org
+  github_org   = "Jonty01" # ← replace with your GitHub username or org
 }
 
 resource "random_id" "suffix" {
