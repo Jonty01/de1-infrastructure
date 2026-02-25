@@ -38,9 +38,10 @@ provider "aws" {
   region = "us-east-1" # ← update if using a different region
 }
 
+# username added
 locals {
   project_name = "de1"
-  github_org   = "YOUR_GITHUB_USERNAME" # ← replace with your GitHub username or org
+  github_org   = "Jonty01" # ← replace with your GitHub username or org
 }
 
 resource "random_id" "suffix" {
@@ -174,8 +175,8 @@ resource "aws_iam_role_policy" "code_deploy_s3" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect   = "Allow"
-        Action   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject", "s3:ListBucket"]
+        Effect = "Allow"
+        Action = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject", "s3:ListBucket"]
         Resource = [
           "arn:aws:s3:::${local.project_name}-*-glue-scripts",
           "arn:aws:s3:::${local.project_name}-*-glue-scripts/*",
