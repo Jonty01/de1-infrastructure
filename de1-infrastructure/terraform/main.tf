@@ -10,7 +10,7 @@ terraform {
 
   backend "s3" {
     # Populated after bootstrap — replace these values with bootstrap outputs
-    bucket         = "de1-terraform-state-REPLACE"  # ← from bootstrap output
+    bucket         = "de1-terraform-state-8c0a954b"  # ← from bootstrap output
     dynamodb_table = "de1-terraform-state-lock"
     region         = "us-east-1"
     encrypt        = true
