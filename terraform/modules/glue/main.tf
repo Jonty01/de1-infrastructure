@@ -50,10 +50,10 @@ resource "aws_iam_role_policy" "glue_s3_access" {
 # The script must already exist in S3 (uploaded by de1-code-migration pipeline).
 
 resource "aws_glue_job" "example_etl" {
-  name         = "${var.project_name}-${var.environment}-example-etl"
-  role_arn     = aws_iam_role.glue.arn
-  glue_version = "4.0"
-  worker_type  = var.glue_worker_type
+  name              = "${var.project_name}-${var.environment}-example-etl"
+  role_arn          = aws_iam_role.glue.arn
+  glue_version      = "4.0"
+  worker_type       = var.glue_worker_type
   number_of_workers = var.glue_num_workers
 
   command {
